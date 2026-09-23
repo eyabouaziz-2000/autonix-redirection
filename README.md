@@ -11,18 +11,9 @@
     </div>
 
     <script>
-        // Récupérer toute l'URL actuelle (avec le token d'invitation de Supabase après le # ou ?)
         const currentUrl = window.location.href;
-        
-        // Option A : Si vous voulez transformer l'URL web en schéma personnalisé pour l'app mobile
-        // (Exemple : transformer https://votre-site.com/#access_token=... en autonix://set-password#access_token=...)
-        const deepLinkUrl = currentUrl.replace('https://votre-site.com', 'autonix://set-password');
-
-        // Tentative d'ouverture de l'application mobile
+        const deepLinkUrl = currentUrl.replace('https://eyabouaziz-2000.github.io/index.html', 'autonix://set-password');
         window.location.href = deepLinkUrl;
-
-        // Option B (Alternative) : Afficher le lien ou le token si l'utilisateur est sur PC
-        // pour qu'il puisse le copier-coller dans l'application mobile.
     </script>
 </body>
 </html>
