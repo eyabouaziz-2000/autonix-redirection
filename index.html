@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirection Autonix...</title>
+</head>
+<body>
+    <div style="text-align: center; margin-top: 50px; font-family: Arial, sans-serif;">
+        <h2>Redirection en cours vers Autonix...</h2>
+        <p>Si l'application ne s'ouvre pas automatiquement, vérifiez votre installation.</p>
+    </div>
+
+    <script>
+        const currentUrl = window.location.href;
+        // Remplace l'URL de votre site par votre protocole mobile personnalisé
+        const deepLinkUrl = currentUrl.replace('https://eyabouaziz-2000.github.io/redirection-automatique/', 'autonix://set-password');
+        window.location.href = deepLinkUrl;
+    </script>
+</body>
+</html>
