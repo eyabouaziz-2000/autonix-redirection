@@ -18,19 +18,19 @@
 <body>
 
 <div class="card">
-    <h2>Bienvenue sur Autonix </h2>
-    <p>Veuillez définir votre mot de passe pour activer votre espace :</p>
+    <h2>Créer votre mot de passe</h2>
+    <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
     
     <input type="password" id="password" placeholder="Nouveau mot de passe" required>
-    <button onclick="setupAccount()">Activer mon compte</button>
+    <button onclick="setupAccount()">Valider le mot de passe</button>
     
     <p id="message"></p>
 </div>
 
 <script>
-    // Remplacez par vos vraies clés Supabase
-    const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co/rest/v1/';
-    const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP';
+    // Initialisation de Supabase avec vos clés du projet
+    const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvB1YmTOF-R5PO_nu_g_6fwwLrkP';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function setupAccount() {
@@ -54,7 +54,7 @@
                 throw new Error("Lien invalide ou expiré. Veuillez refaire une demande d'invitation.");
             }
 
-            // 2. Établir la session Supabase
+            // 2. Établir la session Supabase sécurisée avec le token de l'e-mail
             const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken
@@ -63,26 +63,25 @@
 
             const user = sessionData.user;
 
-            // 3. Mettre à jour le mot de passe
+            // 3. Mettre à jour et valider définitivement le mot de passe dans Supabase Auth
             const { error: updateError } = await supabaseClient.auth.updateUser({
                 password: password
             });
             if (updateError) throw updateError;
 
-            // 4. Enregistrer l'utilisateur dans vos tableaux (profils et gestion des utilisateurs)
-            // Assurez-vous d'adapter le nom de vos tables (ex: 'profiles' et 'users_management')
+            // 4. L'ÉCRITURE SE FAIT ICI : Le mot de passe est validé, on enregistre dans vos tables
             const { error: profileError } = await supabaseClient
                 .from('profiles')
                 .upsert({
                     id: user.id,
                     email: user.email,
-                    // Vous pouvez ajouter d'autres champs si besoin
                 });
 
             if (profileError) console.error("Erreur table profiles :", profileError.message);
 
+            // Message de succès affiché à l'utilisateur
             messageEl.style.color = 'green';
-            messageEl.innerText = 'Compte activé avec succès ! Vous pouvez fermer cette page et vous connecter dans l\'application.';
+            messageEl.innerText = 'Compte activé avec succès ! Vous pouvez fermer cette page.';
             document.getElementById('password').disabled = true;
 
         } catch (err) {
