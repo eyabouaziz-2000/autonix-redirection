@@ -1,37 +1,17 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autonix - Création de votre compte</title>
-    <!-- Importation de Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #4CAF50; color: white; padding: 10px; border: none; width: 100%; border-radius: 4px; font-size: 16px; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        #message { margin-top: 15px; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-<div class="card">
-    <h2>Bienvenue sur Autonix</h2>
-    <p>Veuillez définir votre mot de passe pour activer votre espace :</p>
-    
-    <input type="password" id="password" placeholder="Nouveau mot de passe" required>
-    <button onclick="setupAccount()">Activer mon compte</button>
-    
-    <p id="message"></p>
-</div>
-
 <script>
-    // Remplacez par vos vraies clés Supabase
-    const SUPABASE_URL = 'VOTRE_SUPABASE_URL';
-    const SUPABASE_ANON_KEY = 'VOTRE_SUPABASE_ANON_KEY';
+    const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co/rest/v1/';
+    const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Récupérer automatiquement la session depuis l'URL dès le chargement de la page
+    window.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const { data, error } = await supabaseClient.auth.getSession();
+            if (error) console.error("Erreur session :", error.message);
+        } catch (err) {
+            console.error("Erreur :", err);
+        }
+    });
 
     async function setupAccount() {
         const password = document.getElementById('password').value;
@@ -44,45 +24,47 @@
         }
 
         try {
-            // 1. Récupérer le token d'accès dans l'URL
-            const hash = window.location.hash;
-            const params = new URLSearchParams(hash.replace('#', '?'));
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
+            // S'assurer que la session est bien active avant de modifier le mot de passe
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            
+            if (!session) {
+                // Tentative manuelle si la session n'est pas détectée
+                const hash = window.location.hash;
+                const params = new URLSearchParams(hash.replace('#', '?'));
+                const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
 
-            if (!accessToken) {
-                throw new Error("Lien invalide ou expiré. Veuillez refaire une demande d'invitation.");
+                if (!accessToken) {
+                    throw new Error("Session introuvable. Veuillez recréer un utilisateur et refaire un test.");
+                }
+
+                await supabaseClient.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                });
             }
 
-            // 2. Établir la session Supabase
-            const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-            });
-            if (sessionError) throw sessionError;
-
-            const user = sessionData.user;
-
-            // 3. Mettre à jour le mot de passe
+            // 1. Mettre à jour le mot de passe
             const { error: updateError } = await supabaseClient.auth.updateUser({
                 password: password
             });
             if (updateError) throw updateError;
 
-            // 4. Enregistrer l'utilisateur dans vos tableaux (profils et gestion des utilisateurs)
-            // Assurez-vous d'adapter le nom de vos tables (ex: 'profiles' et 'users_management')
-            const { error: profileError } = await supabaseClient
-                .from('profiles')
-                .upsert({
-                    id: user.id,
-                    email: user.email,
-                    // Vous pouvez ajouter d'autres champs si besoin
-                });
+            // 2. Récupérer l'utilisateur connecté pour l'insérer dans les tables
+            const { data: { user } } = await supabaseClient.auth.getUser();
 
-            if (profileError) console.error("Erreur table profiles :", profileError.message);
+            if (user) {
+                // Insérer dans la table des profils / gestion des utilisateurs
+                await supabaseClient
+                    .from('profiles')
+                    .upsert({
+                        id: user.id,
+                        email: user.email,
+                    });
+            }
 
             messageEl.style.color = 'green';
-            messageEl.innerText = 'Compte activé avec succès ! Vous pouvez fermer cette page et vous connecter dans l\'application.';
+            messageEl.innerText = 'Compte activé avec succès ! Vous pouvez fermer cette page.';
             document.getElementById('password').disabled = true;
 
         } catch (err) {
@@ -91,6 +73,3 @@
         }
     }
 </script>
-
-</body>
-</html>
