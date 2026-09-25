@@ -4,43 +4,60 @@
     <meta charset="UTF-8">
     <title>Créer votre mot de passe</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial; background: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #218838; }
+        #message { margin-top: 15px; font-weight: bold; }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+    </style>
 </head>
 <body>
-    <div id="form-container">
+
+    <div class="card" id="form-container">
         <h2>Définissez votre mot de passe</h2>
-        <input type="password" id="password" placeholder="Votre mot de passe (min. 6 caractères)"><br><br>
+        <p id="user-email-display"></p>
+        <input type="password" id="password" placeholder="Votre mot de passe (min. 6 caractères)">
         <button onclick="validerEtCreerCompte()">Enregistrer et valider</button>
     </div>
-    <p id="message"></p>
+    <div id="message"></div>
 
     <script>
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP';
         const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Récupérer l'e-mail depuis l'URL (ex: ?email=test@gmail.com)
+        // Récupérer l'email depuis l'URL (ex: validate.html?email=eyabouaziz@gmail.com)
         const urlParams = new URLSearchParams(window.location.search);
         const userEmail = urlParams.get('email');
+
+        if (userEmail) {
+            document.getElementById('user-email-display').textContent = "Pour : " + userEmail;
+        } else {
+            document.getElementById('message').textContent = "Erreur : Aucun e-mail trouvé dans le lien.";
+            document.getElementById('message').className = "error";
+            document.getElementById('form-container').style.display = 'none';
+        }
 
         async function validerEtCreerCompte() {
             const password = document.getElementById('password').value;
             const msg = document.getElementById('message');
             const form = document.getElementById('form-container');
 
-            if (!userEmail) {
-                msg.textContent = "Erreur : E-mail introuvable dans le lien.";
-                return;
-            }
-
             if (!password || password.length < 6) {
                 msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
+                msg.className = "error";
                 return;
             }
 
             try {
                 msg.textContent = "Création du compte en cours...";
+                msg.className = "";
 
-                // 1. Vérifier si l'e-mail existe bien dans 'pending_users' et récupérer son rôle
+                // 1. Verifier el email fel 'pending_users' w njibou el role wel username
                 const { data: pendingData, error: pendingError } = await client
                     .from('pending_users')
                     .select('*')
@@ -48,11 +65,10 @@
                     .maybeSingle();
 
                 if (pendingError || !pendingData) {
-                    throw new Error("Invitation invalide ou expirée.");
+                    throw new Error("Cet e-mail n'est pas dans la liste d'attente.");
                 }
 
-                // 2. CRÉER LE COMPTE DANS SUPABASE AUTH (users) MAINTENANT
-                // On met 'email_confirmed_at' implicitement validé puisque l'utilisateur a cliqué sur le lien
+                // 2. Crear el compte fel 'auth.users' (Supabase Auth)
                 const { data: authData, error: authError } = await client.auth.signUp({
                     email: userEmail,
                     password: password,
@@ -65,11 +81,10 @@
                 });
 
                 if (authError) throw authError;
-
                 const userId = authData.user.id;
 
-                // 3. INSERER DANS LE TABLEAU 'profiles'
-                const { error: profileError } = await client.from('profiles').upsert({
+                // 3. Inserer fel table 'profiles' mrobout bil ID
+                const { error: profileError } = await client.from('profiles').insert({
                     id: userId,
                     username: pendingData.username,
                     role: pendingData.role
@@ -77,18 +92,20 @@
 
                 if (profileError) throw profileError;
 
-                // 4. SUPPRIMER DE LA TABLE 'pending_users' (il n'est plus en attente)
+                // 4. Nfs5ouh mel 'pending_users' puisque tsajel b nejah
                 await client
                     .from('pending_users')
                     .delete()
                     .eq('email', userEmail);
 
-                // 5. SUCCÈS TOTAL
+                // Succès
                 form.style.display = 'none';
-                msg.textContent = "Mot de passe enregistré avec succès ! Votre compte est créé. ✅";
+                msg.textContent = "Compte créé et mot de passe enregistré avec succès ! ✅";
+                msg.className = "success";
 
             } catch (err) {
                 msg.textContent = "Erreur : " + err.message;
+                msg.className = "error";
             }
         }
     </script>
