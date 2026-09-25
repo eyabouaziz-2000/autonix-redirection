@@ -128,23 +128,27 @@
                 const userId = authData.user.id;
                 const userEmail = authData.user.email;
 
-                // 2. Récupération des informations depuis pending_profiles
                 let correctRole = 'operatrice';
                 let userNom = null;
                 let userPrenom = null;
 
-                const { data: pendingData } = await client
-                    .from('pending_profiles')
-                    .select('role, nom, prenom')
-                    .eq('email', userEmail)
-                    .maybeSingle();
+            const { data: pendingData } = await client
+              .from('pending_profiles')
+              .select('role, nom, prenom')
+              .eq('email', userEmail)
+              .maybeSingle();
 
-                if (pendingData) {
-                    correctRole = pendingData.role;
-                    userNom = pendingData.nom;
-                    userPrenom = pendingData.prenom;
-                }
-
+            if (pendingData) {
+            userNom = pendingData.nom;
+            userPrenom = pendingData.prenom;
+    
+    // Forcer la correspondance exacte avec la valeur en minuscules de l'Enum SQL
+    if (pendingData.role === 'mural' || pendingData.role === 'Affichage mural' || pendingData.role === 'affichage mural') {
+        correctRole = 'affichage mural';
+    } else {
+        correctRole = pendingData.role;
+    }
+}
                 // 3. Insertion propre dans la table profiles
                 const { error: profileError } = await client.from('profiles').upsert({
                     id: userId,
