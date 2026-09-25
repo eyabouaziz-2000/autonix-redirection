@@ -66,26 +66,28 @@
 
         const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
-                detectSessionInUrl: false,
+                detectSessionInUrl: true,
                 persistSession: true
             }
         });
 
-        // Établir la session dès le chargement de la page à partir du lien d'invitation
+        // Gestion de la session dès le chargement (prend en charge query params et hash)
         window.addEventListener('DOMContentLoaded', async () => {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-                const params = new URLSearchParams(hash.substring(1));
-                const accessToken = params.get('access_token');
-                const refreshToken = params.get('refresh_token');
-                
-                if (accessToken) {
-                    await client.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const type = urlParams.get('type');
+
+            if (token && type) {
+                try {
+                    const { data, error } = await client.auth.verifyOtp({
+                        token_hash: token,
+                        type: type
                     });
-                    // Nettoyer l'URL pour ne pas réutiliser le token par erreur
+                    if (error) throw error;
+                    // Nettoyer l'URL
                     history.replaceState(null, null, window.location.pathname);
+                } catch (err) {
+                    console.error("Erreur de vérification du lien :", err.message);
                 }
             }
         });
@@ -95,7 +97,7 @@
             const msg = document.getElementById('message');
             const form = document.getElementById('form-container');
 
-            // 1. Vérification stricte si le champ est vide
+            // Vérification si le champ est vide
             if (!password || password.trim() === "") {
                 msg.textContent = "Veuillez entrer un mot de passe valide.";
                 msg.className = 'error';
@@ -112,22 +114,21 @@
                 msg.textContent = "Enregistrement en cours...";
                 msg.className = '';
 
-                // Récupérer la session active déjà configurée
-                const { data: sessionData, error: sessionError } = await client.auth.getSession();
-                const session = sessionData.session;
+                let { data: sessionData } = await client.auth.getSession();
+                let session = sessionData.session;
 
                 if (!session) {
                     throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
                 }
 
-                // 2. Mise à jour du mot de passe dans Supabase Auth
+                // 1. Mise à jour du mot de passe dans Supabase Auth
                 const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
                 if (authError) throw authError;
 
                 const userId = authData.user.id;
                 const userEmail = authData.user.email;
 
-                // 3. Récupération des informations depuis pending_profiles
+                // 2. Récupération des informations depuis pending_profiles
                 let correctRole = 'operatrice';
                 let userNom = null;
                 let userPrenom = null;
@@ -144,7 +145,7 @@
                     userPrenom = pendingData.prenom;
                 }
 
-                // 4. Insertion propre dans la table profiles
+                // 3. Insertion propre dans la table profiles
                 const { error: profileError } = await client.from('profiles').upsert({
                     id: userId,
                     username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
@@ -154,7 +155,7 @@
 
                 if (profileError) throw profileError;
 
-                // 5. Nettoyage de la table temporaire
+                // 4. Nettoyage de pending_profiles
                 await client.from('pending_profiles').delete().eq('email', userEmail);
 
                 // Succès
