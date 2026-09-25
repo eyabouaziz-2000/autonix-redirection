@@ -61,12 +61,11 @@
             font-weight: bold;
         }
         button.submit-btn:hover { background-color: #218838; }
-        #message {
+        #error-message {
             margin-top: 15px;
             font-size: 14px;
+            color: #dc3545;
         }
-        .error { color: #dc3545; }
-        .success { color: #28a745; }
     </style>
 </head>
 <body>
@@ -76,43 +75,28 @@
         <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
         
         <div class="input-group">
-            <input type="password" id="password" placeholder="Mot de passe">
+            <input type="password" id="password-input" placeholder="Mot de passe">
             <button type="button" id="toggleBtn" onclick="togglePass()">👁️</button>
         </div>
         
         <button class="submit-btn" onclick="savePassword()">Valider le mot de passe</button>
-        <div id="message"></div>
+        <div id="error-message"></div>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON_PUBLIQUE';
+        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP';
 
-        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        // Initialisation de Supabase (détection automatique de la session de récupération dans l'URL)
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
-                detectSessionInUrl: false,
+                detectSessionInUrl: true,
                 persistSession: true
             }
         });
 
-        let storedAccessToken = null;
-        let storedRefreshToken = null;
-
-        // Capture des tokens au chargement sans les consommer
-        window.addEventListener('DOMContentLoaded', () => {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-                const params = new URLSearchParams(hash.substring(1));
-                storedAccessToken = params.get('access_token');
-                storedRefreshToken = params.get('refresh_token');
-                
-                // Nettoyage immédiat de l'URL pour garder les tokens en mémoire
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        });
-
         function togglePass() {
-            const pwdInput = document.getElementById('password');
+            const pwdInput = document.getElementById('password-input');
             const btn = document.getElementById('toggleBtn');
             if (pwdInput.type === 'password') {
                 pwdInput.type = 'text';
@@ -124,90 +108,78 @@
         }
 
         async function savePassword() {
-            const password = document.getElementById('password').value;
-            const msg = document.getElementById('message');
-            const form = document.getElementById('form-container');
+            const errorMsg = document.getElementById('error-message');
+            errorMsg.innerText = "";
 
-            // 1. VÉRIFICATION LOCALE DIRECTE : Si le MDP est faux/vide, on s'arrête net sans toucher au token !
-            if (!password || password.length < 6) {
-                msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
-                msg.className = 'error';
+            // Récupère le nouveau mot de passe saisi par l'utilisateur
+            const newPassword = document.getElementById('password-input').value;
+
+            if (!newPassword || newPassword.length < 6) {
+                errorMsg.innerText = "Erreur : Le mot de passe doit contenir au moins 6 caractères.";
                 return;
             }
 
             try {
-                msg.textContent = "Vérification en cours...";
-                msg.className = '';
+                errorMsg.innerText = "Enregistrement en cours...";
 
-                let session = (await client.auth.getSession()).data.session;
-                if (!session && storedAccessToken) {
-                    const res = await client.auth.setSession({
-                        access_token: storedAccessToken,
-                        refresh_token: storedRefreshToken
-                    });
-                    session = res.data.session;
-                }
-
-                if (!session) {
-                    throw new Error("Ce lien d'invitation n'est plus valide ou a expiré.");
-                }
-
-                const userId = session.user.id;
-                const userEmail = session.user.email;
-
-                // 2. VÉRIFICATION DANS PROFILES : Est-ce que le compte existe déjà ?
-                const { data: existingProfile } = await client
-                    .from('profiles')
-                    .select('id')
-                    .eq('id', userId)
-                    .maybeSingle();
-
-                if (existingProfile) {
-                    form.style.display = 'none';
-                    msg.textContent = "⚠️ Ce compte a déjà été utilisé et enregistré avec succès. Ce lien ne peut plus servir.";
-                    msg.className = 'error';
-                    return;
-                }
-
-                // 3. Mise à jour du mot de passe dans Supabase Auth
-                const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
-                if (authError) throw authError;
-
-                // 4. Récupération des infos depuis pending_profiles
-                let correctRole = 'operatrice';
-                let userNom = null;
-                let userPrenom = null;
-
-                const { data: pendingData } = await client
-                    .from('pending_profiles')
-                    .select('role, nom, prenom')
-                    .eq('email', userEmail)
-                    .maybeSingle();
-
-                if (pendingData) {
-                    correctRole = pendingData.role;
-                    userNom = pendingData.nom;
-                    userPrenom = pendingData.prenom;
-                }
-
-                // 5. Insertion définitive dans profiles (première fois)
-                const { error: profileError } = await client.from('profiles').insert({
-                    id: userId,
-                    username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
-                    nom: userNom,
-                    role: correctRole,
+                // Met à jour l'utilisateur connecté via le lien de récupération
+                const { data, error } = await supabase.auth.updateUser({
+                  password: newPassword
                 });
 
-                if (profileError) throw profileError;
+                if (error) {
+                  // Affiche l'erreur si le lien est vraiment expiré ou invalide
+                  errorMsg.innerText = "Erreur : " + error.message;
+                } else {
+                  // Succès ! Le mot de passe est mis à jour et l'utilisateur est authentifié
+                  const user = data.user;
+                  const userId = user.id;
+                  const userEmail = user.email;
 
-                // Succès total
-                form.style.display = 'none';
-                msg.textContent = "Mot de passe enregistré avec succès ! ✅";
-                msg.className = 'success';
+                  // Vérification si le profil existe déjà pour éviter les doublons
+                  const { data: existingProfile } = await supabase
+                      .from('profiles')
+                      .select('id')
+                      .eq('id', userId)
+                      .maybeSingle();
+
+                  if (!existingProfile) {
+                      // Récupération des données depuis 'pending_profiles'
+                      let correctRole = 'operatrice';
+                      let userNom = null;
+                      let userPrenom = null;
+
+                      const { data: pendingData } = await supabase
+                          .from('pending_profiles')
+                          .select('role, nom, prenom')
+                          .eq('email', userEmail)
+                          .maybeSingle();
+
+                      if (pendingData) {
+                          correctRole = pendingData.role;
+                          userNom = pendingData.nom;
+                          userPrenom = pendingData.prenom;
+                      }
+
+                      // Bascule des données vers la table 'profiles' définitive
+                      const { error: profileError } = await supabase.from('profiles').insert({
+                          id: userId,
+                          username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
+                          nom: userNom,
+                          role: correctRole,
+                      });
+
+                      if (profileError) {
+                          console.error("Erreur lors de l'insertion dans profiles :", profileError);
+                      }
+                  }
+
+                  alert("Mot de passe créé avec succès !");
+                  document.getElementById('form-container').style.display = 'none';
+                }
 
             } catch (err) {
-                msg.textContent = "Erreur : " + err.message;
-                msg.className = 'error';
+                errorMsg.innerText = "Erreur technique : " + err.message;
             }
         }
     </script>
