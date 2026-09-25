@@ -149,12 +149,29 @@
             const userId = authData.user.id;
             const userEmail = authData.user.email;
 
-            // 3. Optionnel : Récupérer le rôle depuis la table pending_profiles si tu y avais stocké l'email
-            // Ou insérer le profil proprement ici une fois que le MDP est validé :
+            // 3. Récupérer le vrai rôle et le nom depuis la table pending_profiles grâce à l'email
+            let correctRole = 'operatrice'; // Rôle par défaut de secours
+            let userNom = null;
+            let userPrenom = null;
+
+            const { data: pendingData, error: pendingError } = await client
+                .from('pending_profiles')
+                .select('role, nom, prenom')
+                .eq('email', userEmail)
+                .maybeSingle();
+
+            if (pendingData) {
+                correctRole = pendingData.role;
+                userNom = pendingData.nom;
+                userPrenom = pendingData.prenom;
+            }
+
+            // 4. Insérer proprement dans la table profiles avec le BON rôle
             const { error: profileError } = await client.from('profiles').upsert({
                 id: userId,
-                username: userEmail.split('@')[0], // ou un autre champ
-                role: 'chauffeur', // Assure-toi de récupérer le bon rôle ici si tu l'as dans les métadonnées
+                username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
+                nom: userNom,
+                role: correctRole, // Le rôle réel choisi dans l'application !
             });
 
             if (profileError) throw profileError;
