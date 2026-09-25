@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autonix - Création du mot de passe</title>
-    <!-- Chargement du client Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -27,16 +26,32 @@
         }
         h2 { color: #333; margin-bottom: 10px; }
         p { color: #666; font-size: 14px; }
+        .password-container {
+            position: relative;
+            margin: 15px 0;
+        }
         input {
             width: 100%;
-            padding: 12px;
-            margin: 15px 0;
+            padding: 12px 40px 12px 12px;
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
             font-size: 14px;
         }
-        button {
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #666;
+            padding: 0;
+            width: auto;
+        }
+        button.submit-btn {
             width: 100%;
             padding: 12px;
             background-color: #28a745;
@@ -46,11 +61,12 @@
             font-size: 16px;
             cursor: pointer;
             font-weight: bold;
+            margin-top: 5px;
         }
-        button:hover { background-color: #218838; }
+        button.submit-btn:hover { background-color: #218838; }
         #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
         .error { color: #dc3545; }
-        .success { color: #28a745; }
+        .success { color: #28a745; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -60,30 +76,44 @@
         <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
         
         <div id="form-container">
-            <input type="password" id="password" placeholder="Nouveau mot de passe (min. 6 caractères)" required>
-            <button onclick="updatePassword()">Valider le mot de passe</button>
+            <div class="password-container">
+                <input type="password" id="password" placeholder="Nouveau mot de passe (min. 6 caractères)" required>
+                <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">👁️</button>
+            </div>
+            <button class="submit-btn" onclick="updatePassword()">Valider le mot de passe</button>
         </div>
         
         <div id="message"></div>
     </div>
 
     <script>
-        // Configuration de Supabase (Utilisez UNIQUEMENT votre clé publique / anon)
+        // Configuration de Supabase (Clé publique / anon)
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // Remplacez par votre vraie clé anon
+        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // Remplacez par votre clé anon
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const messageEl = document.getElementById('message');
         const formContainer = document.getElementById('form-container');
 
-        // Vérification de la session au chargement de la page (le SDK lit automatiquement le lien d'invitation)
+        // Fonction pour afficher / cacher le mot de passe avec l'œil
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = document.querySelector('.toggle-password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+
+        // Vérification de la session au chargement de la page
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Attendre un court instant que Supabase traite les paramètres de l'URL hash
                 setTimeout(async () => {
                     const { data, error } = await supabase.auth.getSession();
-                    
                     if (error || !data.session) {
                         throw new Error("Lien invalide ou expiré. Veuillez refaire une demande d'invitation.");
                     }
@@ -109,139 +139,12 @@
                 messageEl.textContent = "Mise à jour en cours...";
                 messageEl.className = '';
 
-                // Mise à jour du mot de passe dans Supabase Auth
                 const { error } = await supabase.auth.updateUser({ password: password });
 
                 if (error) throw error;
 
-                messageEl.textContent = "Compte activé avec succès ! Vous pouvez fermer cette page.";
-                messageEl.className = 'success';
-                formContainer.style.display = 'none';
-
-            } catch (err) {
-                messageEl.textContent = "Erreur : " + err.message;
-                messageEl.className = 'error';
-            }
-        }
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autonix - Création du mot de passe</title>
-    <!-- Chargement du client Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        h2 { color: #333; margin-bottom: 10px; }
-        p { color: #666; font-size: 14px; }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover { background-color: #218838; }
-        #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
-        .error { color: #dc3545; }
-        .success { color: #28a745; }
-    </style>
-</head>
-<body>
-
-    <div class="card">
-        <h2>Créer votre mot de passe</h2>
-        <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
-        
-        <div id="form-container">
-            <input type="password" id="password" placeholder="Nouveau mot de passe (min. 6 caractères)" required>
-            <button onclick="updatePassword()">Valider le mot de passe</button>
-        </div>
-        
-        <div id="message"></div>
-    </div>
-
-    <script>
-        // Configuration de Supabase (Utilisez UNIQUEMENT votre clé publique / anon)
-        const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON_PUBLIQUE'; // Remplacez par votre vraie clé anon
-
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        const messageEl = document.getElementById('message');
-        const formContainer = document.getElementById('form-container');
-
-        // Vérification de la session au chargement de la page (le SDK lit automatiquement le lien d'invitation)
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Attendre un court instant que Supabase traite les paramètres de l'URL hash
-                setTimeout(async () => {
-                    const { data, error } = await supabase.auth.getSession();
-                    
-                    if (error || !data.session) {
-                        throw new Error("Lien invalide ou expiré. Veuillez refaire une demande d'invitation.");
-                    }
-                }, 500);
-            } catch (err) {
-                formContainer.style.display = 'none';
-                messageEl.textContent = "Erreur : " + err.message;
-                messageEl.className = 'error';
-            }
-        });
-
-        // Fonction pour mettre à jour le mot de passe
-        async function updatePassword() {
-            const password = document.getElementById('password').value;
-            
-            if (!password || password.length < 6) {
-                messageEl.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
-                messageEl.className = 'error';
-                return;
-            }
-
-            try {
-                messageEl.textContent = "Mise à jour en cours...";
-                messageEl.className = '';
-
-                // Mise à jour du mot de passe dans Supabase Auth
-                const { error } = await supabase.auth.updateUser({ password: password });
-
-                if (error) throw error;
-
-                messageEl.textContent = "Compte activé avec succès ! Vous pouvez fermer cette page.";
+                // Message de succès demandé
+                messageEl.textContent = "Mot de passe bien enregistré ! Vous pouvez fermer cette page.";
                 messageEl.className = 'success';
                 formContainer.style.display = 'none';
 
