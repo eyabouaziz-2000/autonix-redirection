@@ -71,12 +71,31 @@
             }
         });
 
+        // Établir la session dès le chargement de la page à partir du lien d'invitation
+        window.addEventListener('DOMContentLoaded', async () => {
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token')) {
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
+                
+                if (accessToken) {
+                    await client.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+                    // Nettoyer l'URL pour ne pas réutiliser le token par erreur
+                    history.replaceState(null, null, window.location.pathname);
+                }
+            }
+        });
+
         async function savePassword() {
             const password = document.getElementById('password').value;
             const msg = document.getElementById('message');
             const form = document.getElementById('form-container');
 
-            // 🛑 Vérification 1 : Ken el password faregh, y7bes toul men ghir ma ycreyi chay!
+            // 1. Vérification stricte si le champ est vide
             if (!password || password.trim() === "") {
                 msg.textContent = "Veuillez entrer un mot de passe valide.";
                 msg.className = 'error';
@@ -93,37 +112,22 @@
                 msg.textContent = "Enregistrement en cours...";
                 msg.className = '';
 
-                let session = (await client.auth.getSession()).data.session;
-                
-                if (!session) {
-                    const hash = window.location.hash;
-                    if (hash && hash.includes('access_token')) {
-                        const params = new URLSearchParams(hash.substring(1));
-                        const accessToken = params.get('access_token');
-                        const refreshToken = params.get('refresh_token');
-                        
-                        if (accessToken) {
-                            const res = await client.auth.setSession({
-                                access_token: accessToken,
-                                refresh_token: refreshToken
-                            });
-                            session = res.data.session;
-                        }
-                    }
-                }
+                // Récupérer la session active déjà configurée
+                const { data: sessionData, error: sessionError } = await client.auth.getSession();
+                const session = sessionData.session;
 
                 if (!session) {
                     throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
                 }
 
-                // 1. Mise à jour du mot de passe fel auth
+                // 2. Mise à jour du mot de passe dans Supabase Auth
                 const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
                 if (authError) throw authError;
 
                 const userId = authData.user.id;
                 const userEmail = authData.user.email;
 
-                // 2. Récupération des infos depuis pending_profiles
+                // 3. Récupération des informations depuis pending_profiles
                 let correctRole = 'operatrice';
                 let userNom = null;
                 let userPrenom = null;
@@ -140,7 +144,7 @@
                     userPrenom = pendingData.prenom;
                 }
 
-                // 3. Insertion propre dans profiles KAN ba3d ma tsajel el mot de passe b naja7
+                // 4. Insertion propre dans la table profiles
                 const { error: profileError } = await client.from('profiles').upsert({
                     id: userId,
                     username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
@@ -150,10 +154,10 @@
 
                 if (profileError) throw profileError;
 
-                // 4. Nettoyage de pending_profiles
+                // 5. Nettoyage de la table temporaire
                 await client.from('pending_profiles').delete().eq('email', userEmail);
 
-                // Succès total
+                // Succès
                 form.style.display = 'none';
                 msg.textContent = "Mot de passe enregistré avec succès ! ✅";
                 msg.className = 'success';
