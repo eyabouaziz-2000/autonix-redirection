@@ -117,44 +117,54 @@
         const msg = document.getElementById('message');
         const form = document.getElementById('form-container');
 
+        // 1. VÉRIFICATION IMMÉDIATE : Si le MDP est faux, on bloque direct SANS toucher aux tokens !
         if (!password || password.length < 6) {
             msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
             msg.className = 'error';
-            return;
+            return; // Rien n'est consommé, l'utilisateur peut corriger et recommencer !
         }
 
         try {
             msg.textContent = "Enregistrement en cours...";
             msg.className = '';
 
-            // 1. Récupération de la session depuis le lien de l'URL
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-                const params = new URLSearchParams(hash.substring(1));
-                const accessToken = params.get('access_token');
-                const refreshToken = params.get('refresh_token');
-                
-                if (accessToken) {
-                    await client.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
-                    });
+            // 2. Récupération de la session depuis l'URL si elle n'est pas déjà active
+            let session = (await client.auth.getSession()).data.session;
+            
+            if (!session) {
+                const hash = window.location.hash;
+                if (hash && hash.includes('access_token')) {
+                    const params = new URLSearchParams(hash.substring(1));
+                    const accessToken = params.get('access_token');
+                    const refreshToken = params.get('refresh_token');
+                    
+                    if (accessToken) {
+                        const res = await client.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        });
+                        session = res.data.session;
+                    }
                 }
             }
 
-            // 2. Mettre à jour le mot de passe dans Supabase Auth
+            if (!session) {
+                throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
+            }
+
+            // 3. Mise à jour du mot de passe
             const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
             if (authError) throw authError;
 
             const userId = authData.user.id;
             const userEmail = authData.user.email;
 
-            // 3. Récupérer le vrai rôle et le nom depuis la table pending_profiles grâce à l'email
-            let correctRole = 'operatrice'; // Rôle par défaut de secours
+            // 4. Récupération du rôle depuis pending_profiles
+            let correctRole = 'operatrice';
             let userNom = null;
             let userPrenom = null;
 
-            const { data: pendingData, error: pendingError } = await client
+            const { data: pendingData } = await client
                 .from('pending_profiles')
                 .select('role, nom, prenom')
                 .eq('email', userEmail)
@@ -166,17 +176,17 @@
                 userPrenom = pendingData.prenom;
             }
 
-            // 4. Insérer proprement dans la table profiles avec le BON rôle
+            // 5. Insertion propre dans profiles (déclenchée UNIQUEMENT ici en cas de succès)
             const { error: profileError } = await client.from('profiles').upsert({
                 id: userId,
                 username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
                 nom: userNom,
-                role: correctRole, // Le rôle réel choisi dans l'application !
+                role: correctRole,
             });
 
             if (profileError) throw profileError;
 
-            // Succès total : Le formulaire disparaît et le message s'affiche
+            // Succès total
             form.style.display = 'none';
             msg.textContent = "Mot de passe enregistré avec succès ! ✅";
             msg.className = 'success';
