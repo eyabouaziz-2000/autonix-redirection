@@ -93,12 +93,12 @@
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // <-- Mettez votre clé anon ici 
 
+    // 1. N7ottou detectSessionInUrl b false bech mayetaasarch el token mel awel
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
             detectSessionInUrl: false,
             persistSession: true
         }
-        
     });
 
     function togglePass() {
@@ -118,20 +118,20 @@
         const msg = document.getElementById('message');
         const form = document.getElementById('form-container');
 
-        // 1. VÉRIFICATION IMMÉDIATE : Si le MDP est faux, on bloque direct SANS toucher aux tokens !
+        // 2. Vérification mte3 el mot de passe 9bal kol chay (ken ghalat, nreturniw direct w el lien yb9a safe!)
         if (!password || password.length < 6) {
             msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
             msg.className = 'error';
-            return; // Rien n'est consommé, l'utilisateur peut corriger et recommencer !
+            return;
         }
 
         try {
             msg.textContent = "Enregistrement en cours...";
             msg.className = '';
 
-            // 2. Récupération de la session depuis l'URL si elle n'est pas déjà active
             let session = (await client.auth.getSession()).data.session;
             
+            // 3. Ken el session mch mawjouda, ntalbouha mel URL fel waqt el moufid (wa9t el clic)
             if (!session) {
                 const hash = window.location.hash;
                 if (hash && hash.includes('access_token')) {
@@ -150,17 +150,17 @@
             }
 
             if (!session) {
-                throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
+                throw new Error("Ce lien d'invitation a expiré ou a déjà été utilisé. Veuillez contacter l'administrateur.");
             }
 
-            // 3. Mise à jour du mot de passe
+            // 4. Update mta3 el mot de passe
             const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
             if (authError) throw authError;
 
             const userId = authData.user.id;
             const userEmail = authData.user.email;
 
-            // 4. Récupération du rôle depuis pending_profiles
+            // 5. Nejbdou el role w el info mel pending_profiles
             let correctRole = 'operatrice';
             let userNom = null;
             let userPrenom = null;
@@ -177,7 +177,7 @@
                 userPrenom = pendingData.prenom;
             }
 
-            // 5. Insertion propre dans profiles (déclenchée UNIQUEMENT ici en cas de succès)
+            // 6. Insertion fel profiles KEN wa9t el naje7
             const { error: profileError } = await client.from('profiles').upsert({
                 id: userId,
                 username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
@@ -193,7 +193,11 @@
             msg.className = 'success';
 
         } catch (err) {
-            msg.textContent = "Erreur : " + err.message;
+            let userMessage = "Erreur : " + err.message;
+            if (err.message.includes("sub claim in JWT does not exist") || err.message.includes("expired")) {
+                userMessage = "⚠️ Ce lien d'invitation a expiré ou a déjà été utilisé.";
+            }
+            msg.textContent = userMessage;
             msg.className = 'error';
         }
     }
