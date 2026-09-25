@@ -90,23 +90,13 @@
     </div>
 
     <script>
-        // Configuration Supabase
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // Remplacez par votre clé anon
+        const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON_PUBLIQUE'; // <-- Mettez votre clé anon ici
 
-        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Récupération de la session au chargement de la page via le token de l'URL
-        window.addEventListener('DOMContentLoaded', async () => {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-                const accessToken = new URLSearchParams(hash.substring(1)).get('access_token');
-                if (accessToken) {
-                    await client.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: new URLSearchParams(hash.substring(1)).get('refresh_token')
-                    });
-                }
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                detectSessionInUrl: true,
+                persistSession: true
             }
         });
 
@@ -139,11 +129,26 @@
                 msg.textContent = "Enregistrement en cours...";
                 msg.className = '';
 
+                // Récupération de la session depuis le lien de l'URL
+                const hash = window.location.hash;
+                if (hash && hash.includes('access_token')) {
+                    const params = new URLSearchParams(hash.substring(1));
+                    const accessToken = params.get('access_token');
+                    const refreshToken = params.get('refresh_token');
+                    
+                    if (accessToken) {
+                        await client.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        });
+                    }
+                }
+
                 const { error } = await client.auth.updateUser({ password: password });
 
                 if (error) throw error;
 
-                // Succès : Le formulaire disparaît et le message s'affiche
+                // Succès : Masquer le formulaire et afficher le message exact
                 form.style.display = 'none';
                 msg.textContent = "Mot de passe enregistré avec succès ! ✅";
                 msg.className = 'success';
