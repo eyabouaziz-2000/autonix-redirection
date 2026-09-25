@@ -95,7 +95,7 @@
 
         const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
-                detectSessionInUrl: false,
+                detectSessionInUrl: true,
                 persistSession: true
             }
         });
