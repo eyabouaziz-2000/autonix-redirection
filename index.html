@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autonix - Création du mot de passe</title>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,6 +17,7 @@
             height: 100vh;
             margin: 0;
         }
+
         .card {
             background: white;
             padding: 30px;
@@ -24,13 +27,22 @@
             max-width: 400px;
             text-align: center;
         }
-        h2 { color: #333; margin-bottom: 10px; }
-        p { color: #666; font-size: 14px; }
-        
+
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+            font-size: 14px;
+        }
+
         .password-container {
             position: relative;
             margin: 20px 0;
         }
+
         input {
             width: 100%;
             padding: 12px 45px 12px 12px;
@@ -40,9 +52,12 @@
             font-size: 14px;
             outline: none;
         }
+
         input:focus {
             border-color: #28a745;
         }
+
+        /* Bouton œil */
         .toggle-password {
             position: absolute;
             right: 12px;
@@ -56,12 +71,18 @@
             align-items: center;
             justify-content: center;
         }
+
         .toggle-password svg {
             width: 20px;
             height: 20px;
             fill: #666;
         }
-        
+
+        .toggle-password:hover svg {
+            fill: #333;
+        }
+
+        /* Bouton validation */
         button.submit-btn {
             width: 100%;
             padding: 12px;
@@ -73,99 +94,269 @@
             cursor: pointer;
             font-weight: bold;
         }
-        button.submit-btn:hover { background-color: #218838; }
-        #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
-        .error { color: #dc3545; }
-        .success { color: #28a745; font-size: 16px; }
+
+        button.submit-btn:hover {
+            background-color: #218838;
+        }
+
+        /* Message */
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .error {
+            color: #dc3545;
+        }
+
+        .success {
+            color: #28a745;
+            font-size: 16px;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="card">
+
         <h2>Créer votre mot de passe</h2>
-        <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
-        
+
+        <p>
+            Veuillez entrer votre nouveau mot de passe ci-dessous :
+        </p>
+
         <div id="form-container">
+
             <div class="password-container">
-                <input type="password" id="password" placeholder="Nouveau mot de passe (min. 6 caractères)" required>
-                <button type="button" class="toggle-password" id="toggleBtn" onclick="togglePasswordVisibility()">
-                    <!-- Icône Œil fermé par défaut -->
-                    <svg id="eyeIcon" viewBox="0 0 24 24">
-                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Nouveau mot de passe (min. 6 caractères)"
+                    required
+                >
+
+                <!-- Bouton afficher / masquer -->
+                <button
+                    type="button"
+                    class="toggle-password"
+                    id="toggleBtn"
+                    onclick="togglePasswordVisibility()"
+                    aria-label="Afficher le mot de passe"
+                >
+
+                    <!-- ŒIL BARRÉ : mot de passe masqué par défaut -->
+                    <svg id="eyeIcon"
+                         viewBox="0 0 24 24">
+
+                        <path d="M2 4.27L3.28 3L21 20.72L19.73 22L16.86 19.13C15.4 19.69 13.77 20 12 20C7 20 2.73 16.89 1 12.5C1.69 10.75 2.73 9.2 4.04 7.93L2 4.27ZM12 7C14.76 7 17 9.24 17 12C17 12.75 16.83 13.46 16.54 14.08L14.92 12.46C14.97 12.31 15 12.16 15 12C15 10.34 13.66 9 12 9C11.84 9 11.69 9.03 11.54 9.08L9.92 7.46C10.54 7.17 11.25 7 12 7ZM7.53 9.8C7.2 10.47 7 11.21 7 12C7 14.76 9.24 17 12 17C12.79 17 13.53 16.8 14.2 16.47L12.65 14.92C12.44 14.97 12.22 15 12 15C10.34 15 9 13.66 9 12C9 11.78 9.03 11.56 9.08 11.35L7.53 9.8ZM12 4.5C17 4.5 21.27 7.61 23 12C22.27 13.86 21.08 15.49 19.57 16.75L18.1 15.28C19.2 14.39 20.1 13.25 20.73 12C19.27 9.11 16.01 7 12 7C10.6 7 9.26 7.25 8.02 7.7L6.55 6.23C8.18 5.13 10.04 4.5 12 4.5Z"/>
+
                     </svg>
+
                 </button>
+
             </div>
-            <button class="submit-btn" onclick="updatePassword()">Valider le mot de passe</button>
+
+            <button
+                class="submit-btn"
+                onclick="updatePassword()"
+            >
+                Valider le mot de passe
+            </button>
+
         </div>
-        
+
         <div id="message"></div>
+
     </div>
 
+
     <script>
-        // Configuration de Supabase
-        const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // Mettez votre clé anon ici
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        /* ==============================
+           CONFIGURATION SUPABASE
+        ============================== */
 
-        const messageEl = document.getElementById('message');
-        const formContainer = document.getElementById('form-container');
+        const SUPABASE_URL =
+            'https://wvgamjabxcjmxfztuzkb.supabase.co';
 
-        // Vérifier s'il y a une erreur d'URL (comme un lien expiré / otp_expired) au chargement
+        const SUPABASE_ANON_KEY =
+            'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP';
+
+        const supabase =
+            window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_ANON_KEY
+            );
+
+
+        const messageEl =
+            document.getElementById('message');
+
+        const formContainer =
+            document.getElementById('form-container');
+
+
+        /* ==============================
+           VÉRIFICATION DU LIEN
+        ============================== */
+
         window.addEventListener('DOMContentLoaded', () => {
+
             const hash = window.location.hash;
-            if (hash.includes('error=access_denied') || hash.includes('otp_expired')) {
+
+            if (
+                hash.includes('error=access_denied') ||
+                hash.includes('otp_expired')
+            ) {
+
                 formContainer.style.display = 'none';
-                messageEl.textContent = "Erreur : Lien invalide ou expiré. Veuillez refaire une demande d'invitation depuis l'application.";
+
+                messageEl.textContent =
+                    "Erreur : Lien invalide ou expiré. Veuillez refaire une demande d'invitation depuis l'application.";
+
                 messageEl.className = 'error';
             }
+
         });
 
-        // Fonction pour afficher / cacher le mot de passe avec l'œil
+
+        /* ==============================
+           AFFICHER / MASQUER MOT DE PASSE
+        ============================== */
+
         function togglePasswordVisibility() {
-            const passwordInput = document.getElementById('password');
-            const eyeIcon = document.getElementById('eyeIcon');
+
+            const passwordInput =
+                document.getElementById('password');
+
+            const eyeIcon =
+                document.getElementById('eyeIcon');
+
+            const toggleBtn =
+                document.getElementById('toggleBtn');
+
 
             if (passwordInput.type === 'password') {
+
+                /* =========================
+                   AFFICHER LE MOT DE PASSE
+                   ========================= */
+
                 passwordInput.type = 'text';
-                // Icône œil barré (ou ouvert selon préférence)
-                eyeIcon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.12c0-1.66-1.34-3-3-3l-.17.02z"/>';
+
+                toggleBtn.setAttribute(
+                    'aria-label',
+                    'Masquer le mot de passe'
+                );
+
+                /* ŒIL OUVERT */
+
+                eyeIcon.innerHTML = `
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                `;
+
             } else {
+
+                /* =========================
+                   MASQUER LE MOT DE PASSE
+                   ========================= */
+
                 passwordInput.type = 'password';
-                // Icône œil normal
-                eyeIcon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+
+                toggleBtn.setAttribute(
+                    'aria-label',
+                    'Afficher le mot de passe'
+                );
+
+                /* ŒIL BARRÉ */
+
+                eyeIcon.innerHTML = `
+                    <path d="M2 4.27L3.28 3L21 20.72L19.73 22L16.86 19.13C15.4 19.69 13.77 20 12 20C7 20 2.73 16.89 1 12.5C1.69 10.75 2.73 9.2 4.04 7.93L2 4.27ZM12 7C14.76 7 17 9.24 17 12C17 12.75 16.83 13.46 16.54 14.08L14.92 12.46C14.97 12.31 15 12.16 15 12C15 10.34 13.66 9 12 9C11.84 9 11.69 9.03 11.54 9.08L9.92 7.46C10.54 7.17 11.25 7 12 7ZM7.53 9.8C7.2 10.47 7 11.21 7 12C7 14.76 9.24 17 12 17C12.79 17 13.53 16.8 14.2 16.47L12.65 14.92C12.44 14.97 12.22 15 12 15C10.34 15 9 13.66 9 12C9 11.78 9.03 11.56 9.08 11.35L7.53 9.8ZM12 4.5C17 4.5 21.27 7.61 23 12C22.27 13.86 21.08 15.49 19.57 16.75L18.1 15.28C19.2 14.39 20.1 13.25 20.73 12C19.27 9.11 16.01 7 12 7C10.6 7 9.26 7.25 8.02 7.7L6.55 6.23C8.18 5.13 10.04 4.5 12 4.5Z"/>
+                `;
+
             }
+
         }
 
-        // Fonction pour valider et enregistrer le mot de passe
+
+        /* ==============================
+           ENREGISTRER LE MOT DE PASSE
+        ============================== */
+
         async function updatePassword() {
-            const password = document.getElementById('password').value;
-            
+
+            const password =
+                document.getElementById('password').value;
+
+
+            /* Vérification longueur */
+
             if (!password || password.length < 6) {
-                messageEl.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
+
+                messageEl.textContent =
+                    "Le mot de passe doit contenir au moins 6 caractères.";
+
                 messageEl.className = 'error';
+
                 return;
             }
 
+
             try {
-                messageEl.textContent = "Enregistrement en cours...";
+
+                /* Message pendant l'enregistrement */
+
+                messageEl.textContent =
+                    "Enregistrement en cours...";
+
                 messageEl.className = '';
 
-                const { error } = await supabase.auth.updateUser({ password: password });
 
-                if (error) throw error;
+                /* Mise à jour Supabase */
 
-                // Affichage du message de succès exact demandé
-                messageEl.textContent = "Mot de passe bien enregistré !";
+                const { error } =
+                    await supabase.auth.updateUser({
+                        password: password
+                    });
+
+
+                if (error) {
+                    throw error;
+                }
+
+
+                /* ==============================
+                   SUCCÈS
+                ============================== */
+
+                messageEl.textContent =
+                    "Mot de passe enregistré avec succès !";
+
                 messageEl.className = 'success';
+
+
+                /* Cacher le formulaire */
+
                 formContainer.style.display = 'none';
 
+
             } catch (err) {
+
                 console.error("Erreur :", err);
-                messageEl.textContent = "Erreur : " + err.message;
+
+                messageEl.textContent =
+                    "Erreur : " + err.message;
+
                 messageEl.className = 'error';
+
             }
+
         }
+
     </script>
+
 </body>
 </html>
