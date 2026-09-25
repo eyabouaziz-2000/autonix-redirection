@@ -93,11 +93,26 @@
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // <-- Mettez votre clé anon ici 
 
-    // 1. N7ottou detectSessionInUrl b false bech mayetaasarch el token mel awel
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
-            detectSessionInUrl: false,
+            detectSessionInUrl: false, // Ma n5allouhch ydetecti mel awel
             persistSession: true
+        }
+    });
+
+    // N5abbiw el tokens mel URL mel awel bech maydi3ouch w mayetconsommawech
+    let storedAccessToken = null;
+    let storedRefreshToken = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+            const params = new URLSearchParams(hash.substring(1));
+            storedAccessToken = params.get('access_token');
+            storedRefreshToken = params.get('refresh_token');
+            
+            // Nadhfou el URL mel hash bech el page matb9ach t3awed tconsommih
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     });
 
@@ -118,7 +133,7 @@
         const msg = document.getElementById('message');
         const form = document.getElementById('form-container');
 
-        // 2. Vérification mte3 el mot de passe 9bal kol chay (ken ghalat, nreturniw direct w el lien yb9a safe!)
+        // 1. Ken el mot de passe ghalat wala kaseur, nreturniw direct (el token yb9a safe f memory!)
         if (!password || password.length < 6) {
             msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
             msg.className = 'error';
@@ -130,37 +145,28 @@
             msg.className = '';
 
             let session = (await client.auth.getSession()).data.session;
-            
-            // 3. Ken el session mch mawjouda, ntalbouha mel URL fel waqt el moufid (wa9t el clic)
-            if (!session) {
-                const hash = window.location.hash;
-                if (hash && hash.includes('access_token')) {
-                    const params = new URLSearchParams(hash.substring(1));
-                    const accessToken = params.get('access_token');
-                    const refreshToken = params.get('refresh_token');
-                    
-                    if (accessToken) {
-                        const res = await client.auth.setSession({
-                            access_token: accessToken,
-                            refresh_token: refreshToken
-                        });
-                        session = res.data.session;
-                    }
-                }
+
+            // 2. Ken el session mch active, nesta3mlou el tokens elli 5abbinahom mel awel bil 3amel
+            if (!session && storedAccessToken) {
+                const res = await client.auth.setSession({
+                    access_token: storedAccessToken,
+                    refresh_token: storedRefreshToken
+                });
+                session = res.data.session;
             }
 
             if (!session) {
-                throw new Error("Ce lien d'invitation a expiré ou a déjà été utilisé. Veuillez contacter l'administrateur.");
+                throw new Error("Ce lien d'invitation a expiré ou a déjà été utilisé.");
             }
 
-            // 4. Update mta3 el mot de passe
+            // 3. Update mta3 el mot de passe
             const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
             if (authError) throw authError;
 
             const userId = authData.user.id;
             const userEmail = authData.user.email;
 
-            // 5. Nejbdou el role w el info mel pending_profiles
+            // 4. Nejbdou el role mel pending_profiles
             let correctRole = 'operatrice';
             let userNom = null;
             let userPrenom = null;
@@ -177,7 +183,7 @@
                 userPrenom = pendingData.prenom;
             }
 
-            // 6. Insertion fel profiles KEN wa9t el naje7
+            // 5. Insertion fel profiles (ken wa9t el success)
             const { error: profileError } = await client.from('profiles').upsert({
                 id: userId,
                 username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
