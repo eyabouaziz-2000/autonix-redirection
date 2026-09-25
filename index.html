@@ -93,11 +93,12 @@
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // <-- Mettez votre clé anon ici 
 
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-            detectSessionInUrl: false, // Ma n5allouhch ydetecti mel awel
-            persistSession: true
-        }
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        flowType: 'pkce',
+        detectSessionInUrl: false,
+        persistSession: true
+    }
     });
 
     // N5abbiw el tokens mel URL mel awel bech maydi3ouch w mayetconsommawech
