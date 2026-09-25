@@ -93,15 +93,13 @@
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; // <-- Mettez votre clé anon ici 
 
-        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-        flowType: 'pkce',
-        detectSessionInUrl: false,
-        persistSession: true
-    }
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            detectSessionInUrl: false,
+            persistSession: true
+        }
     });
 
-    // N5abbiw el tokens mel URL mel awel bech maydi3ouch w mayetconsommawech
     let storedAccessToken = null;
     let storedRefreshToken = null;
 
@@ -112,7 +110,7 @@
             storedAccessToken = params.get('access_token');
             storedRefreshToken = params.get('refresh_token');
             
-            // Nadhfou el URL mel hash bech el page matb9ach t3awed tconsommih
+            // Nettoyage immédiat de l'URL pour garder les tokens en mémoire
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     });
@@ -134,7 +132,7 @@
         const msg = document.getElementById('message');
         const form = document.getElementById('form-container');
 
-        // 1. Ken el mot de passe ghalat wala kaseur, nreturniw direct (el token yb9a safe f memory!)
+        // 1. Vérification de la longueur du mot de passe
         if (!password || password.length < 6) {
             msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
             msg.className = 'error';
@@ -142,12 +140,10 @@
         }
 
         try {
-            msg.textContent = "Enregistrement en cours...";
+            msg.textContent = "Vérification en cours...";
             msg.className = '';
 
             let session = (await client.auth.getSession()).data.session;
-
-            // 2. Ken el session mch active, nesta3mlou el tokens elli 5abbinahom mel awel bil 3amel
             if (!session && storedAccessToken) {
                 const res = await client.auth.setSession({
                     access_token: storedAccessToken,
@@ -157,17 +153,32 @@
             }
 
             if (!session) {
-                throw new Error("Ce lien d'invitation a expiré ou a déjà été utilisé.");
+                throw new Error("Ce lien d'invitation n'est plus valide.");
             }
 
-            // 3. Update mta3 el mot de passe
+            const userId = session.user.id;
+            const userEmail = session.user.email;
+
+            // 2. VÉRIFICATION DANS LE TABLEAU PROFILES : Le compte existe-t-il déjà ?
+            const { data: existingProfile } = await client
+                .from('profiles')
+                .select('id')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (existingProfile) {
+                // Le compte est déjà enregistré dans profiles ! On bloque l'accès.
+                form.style.display = 'none';
+                msg.textContent = "⚠️ Ce compte a déjà été utilisé et enregistré avec succès. Ce lien ne peut plus servir.";
+                msg.className = 'error';
+                return;
+            }
+
+            // 3. Si le compte n'est PAS dans profiles, on met à jour le mot de passe
             const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
             if (authError) throw authError;
 
-            const userId = authData.user.id;
-            const userEmail = authData.user.email;
-
-            // 4. Nejbdou el role mel pending_profiles
+            // 4. Récupération des infos depuis pending_profiles
             let correctRole = 'operatrice';
             let userNom = null;
             let userPrenom = null;
@@ -184,8 +195,8 @@
                 userPrenom = pendingData.prenom;
             }
 
-            // 5. Insertion fel profiles (ken wa9t el success)
-            const { error: profileError } = await client.from('profiles').upsert({
+            // 5. Insertion définitive dans profiles (première fois)
+            const { error: profileError } = await client.from('profiles').insert({
                 id: userId,
                 username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
                 nom: userNom,
@@ -200,11 +211,7 @@
             msg.className = 'success';
 
         } catch (err) {
-            let userMessage = "Erreur : " + err.message;
-            if (err.message.includes("sub claim in JWT does not exist") || err.message.includes("expired")) {
-                userMessage = "⚠️ Ce lien d'invitation a expiré ou a déjà été utilisé.";
-            }
-            msg.textContent = userMessage;
+            msg.textContent = "Erreur : " + err.message;
             msg.className = 'error';
         }
     }
