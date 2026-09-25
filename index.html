@@ -26,31 +26,32 @@
         }
         h2 { color: #333; margin-bottom: 10px; }
         p { color: #666; font-size: 14px; }
-        .password-container {
-            position: relative;
-            margin: 15px 0;
-        }
-        input {
-            width: 100%;
-            padding: 12px 40px 12px 12px;
+        
+        /* Conteneur propre pour l'input et l'œil */
+        .password-group {
+            display: flex;
+            align-items: center;
             border: 1px solid #ccc;
             border-radius: 5px;
-            box-sizing: border-box;
+            margin: 15px 0;
+            background: #fff;
+            overflow: hidden;
+        }
+        .password-group input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            outline: none;
             font-size: 14px;
         }
         .toggle-password {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
             background: none;
             border: none;
+            padding: 0 15px;
+            cursor: pointer;
             font-size: 18px;
-            color: #666;
-            padding: 0;
-            width: auto;
         }
+        
         button.submit-btn {
             width: 100%;
             padding: 12px;
@@ -61,7 +62,6 @@
             font-size: 16px;
             cursor: pointer;
             font-weight: bold;
-            margin-top: 5px;
         }
         button.submit-btn:hover { background-color: #218838; }
         #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
@@ -76,8 +76,8 @@
         <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
         
         <div id="form-container">
-            <div class="password-container">
-                <input type="password" id="password" placeholder="Nouveau mot de passe (min. 6 caractères)" required>
+            <div class="password-group">
+                <input type="password" id="password" placeholder="Nouveau mot de passe (min. 6 caractères)">
                 <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">👁️</button>
             </div>
             <button class="submit-btn" onclick="updatePassword()">Valider le mot de passe</button>
@@ -96,7 +96,7 @@
         const messageEl = document.getElementById('message');
         const formContainer = document.getElementById('form-container');
 
-        // Fonction pour afficher / cacher le mot de passe avec l'œil
+        // Fonction pour afficher / cacher le mot de passe
         function togglePasswordVisibility() {
             const passwordInput = document.getElementById('password');
             const toggleBtn = document.querySelector('.toggle-password');
@@ -108,22 +108,6 @@
                 toggleBtn.textContent = '👁️';
             }
         }
-
-        // Vérification de la session au chargement de la page
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                setTimeout(async () => {
-                    const { data, error } = await supabase.auth.getSession();
-                    if (error || !data.session) {
-                        throw new Error("Lien invalide ou expiré. Veuillez refaire une demande d'invitation.");
-                    }
-                }, 500);
-            } catch (err) {
-                formContainer.style.display = 'none';
-                messageEl.textContent = "Erreur : " + err.message;
-                messageEl.className = 'error';
-            }
-        });
 
         // Fonction pour mettre à jour le mot de passe
         async function updatePassword() {
@@ -149,6 +133,7 @@
                 formContainer.style.display = 'none';
 
             } catch (err) {
+                console.error("Erreur :", err);
                 messageEl.textContent = "Erreur : " + err.message;
                 messageEl.className = 'error';
             }
