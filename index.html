@@ -66,6 +66,7 @@
             font-size: 14px;
             color: #dc3545;
         }
+        .success { color: #28a745; }
     </style>
 </head>
 <body>
@@ -85,9 +86,8 @@
 
     <script>
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP';
+        const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON_PUBLIQUE';
 
-        // Initialisation de Supabase (détection automatique de la session de récupération dans l'URL)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
                 detectSessionInUrl: true,
@@ -111,75 +111,80 @@
             const errorMsg = document.getElementById('error-message');
             errorMsg.innerText = "";
 
-            // Récupère le nouveau mot de passe saisi par l'utilisateur
+            // 1. BLOCAGE STRICT EN PREMIER : Si le mot de passe est vide ou court, on s'arrête net !
             const newPassword = document.getElementById('password-input').value;
-
             if (!newPassword || newPassword.length < 6) {
                 errorMsg.innerText = "Erreur : Le mot de passe doit contenir au moins 6 caractères.";
-                return;
+                errorMsg.className = 'error';
+                return; // Rien ne s'exécute, aucun enregistrement n'est fait !
             }
 
             try {
                 errorMsg.innerText = "Enregistrement en cours...";
+                errorMsg.className = '';
 
-                // Met à jour l'utilisateur connecté via le lien de récupération
+                // 2. Mise à jour du mot de passe via le lien de récupération
                 const { data, error } = await supabase.auth.updateUser({
                   password: newPassword
                 });
 
                 if (error) {
-                  // Affiche l'erreur si le lien est vraiment expiré ou invalide
                   errorMsg.innerText = "Erreur : " + error.message;
-                } else {
-                  // Succès ! Le mot de passe est mis à jour et l'utilisateur est authentifié
-                  const user = data.user;
-                  const userId = user.id;
-                  const userEmail = user.email;
-
-                  // Vérification si le profil existe déjà pour éviter les doublons
-                  const { data: existingProfile } = await supabase
-                      .from('profiles')
-                      .select('id')
-                      .eq('id', userId)
-                      .maybeSingle();
-
-                  if (!existingProfile) {
-                      // Récupération des données depuis 'pending_profiles'
-                      let correctRole = 'operatrice';
-                      let userNom = null;
-                      let userPrenom = null;
-
-                      const { data: pendingData } = await supabase
-                          .from('pending_profiles')
-                          .select('role, nom, prenom')
-                          .eq('email', userEmail)
-                          .maybeSingle();
-
-                      if (pendingData) {
-                          correctRole = pendingData.role;
-                          userNom = pendingData.nom;
-                          userPrenom = pendingData.prenom;
-                      }
-
-                      // Bascule des données vers la table 'profiles' définitive
-                      const { error: profileError } = await supabase.from('profiles').insert({
-                          id: userId,
-                          username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
-                          nom: userNom,
-                          role: correctRole,
-                      });
-
-                      if (profileError) {
-                          console.error("Erreur lors de l'insertion dans profiles :", profileError);
-                      }
-                  }
-
-                  alert("Mot de passe créé avec succès !");
-                  document.getElementById('form-container').style.display = 'none';
+                  errorMsg.className = 'error';
+                  return;
                 }
+
+                const user = data.user;
+                const userId = user.id;
+                const userEmail = user.email;
+
+                // 3. Vérification si le profil existe déjà
+                const { data: existingProfile } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('id', userId)
+                    .maybeSingle();
+
+                if (existingProfile) {
+                    errorMsg.innerText = "⚠️ Ce compte a déjà été utilisé.";
+                    errorMsg.className = 'error';
+                    return;
+                }
+
+                // 4. Récupération des infos depuis 'pending_profiles'
+                let correctRole = 'operatrice';
+                let userNom = null;
+                let userPrenom = null;
+
+                const { data: pendingData } = await supabase
+                    .from('pending_profiles')
+                    .select('role, nom, prenom')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+
+                if (pendingData) {
+                    correctRole = pendingData.role;
+                    userNom = pendingData.nom;
+                    userPrenom = pendingData.prenom;
+                }
+
+                // 5. Insertion définitive dans 'profiles' uniquement si tout est valide
+                const { error: profileError } = await supabase.from('profiles').insert({
+                    id: userId,
+                    username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
+                    nom: userNom,
+                    role: correctRole,
+                });
+
+                if (profileError) throw profileError;
+
+                // Succès total
+                document.getElementById('form-container').style.display = 'none';
+                alert("Mot de passe créé avec succès !");
 
             } catch (err) {
                 errorMsg.innerText = "Erreur technique : " + err.message;
+                errorMsg.className = 'error';
             }
         }
     </script>
