@@ -2,13 +2,13 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autonix - Création du mot de passe</title>
+    <title>Créer votre mot de passe</title>
+    <!-- Supabase JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
+            background: #f4f6f9;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -24,70 +24,41 @@
             max-width: 400px;
             text-align: center;
         }
-        h2 { color: #333; margin-bottom: 10px; }
-        p { color: #666; font-size: 14px; }
-        
-        .password-container {
-            position: relative;
-            margin: 20px 0;
-        }
         input {
             width: 100%;
-            padding: 12px 45px 12px 12px;
+            padding: 10px;
+            margin: 15px 0;
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
-            font-size: 14px;
-            outline: none;
         }
-        input:focus {
-            border-color: #28a745;
-        }
-        .toggle-password {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            font-size: 18px;
-        }
-        
-        button.submit-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #28a745;
+        button {
+            background: #28a745;
             color: white;
             border: none;
+            padding: 10px 15px;
+            width: 100%;
             border-radius: 5px;
-            font-size: 16px;
             cursor: pointer;
-            font-weight: bold;
+            font-size: 16px;
         }
-        button.submit-btn:hover { background-color: #218838; }
-        #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
-        .error { color: #dc3545; }
-        .success { color: #28a745; font-size: 16px; }
+        button:hover {
+            background: #218838;
+        }
+        .error { color: #dc3545; margin-top: 10px; }
+        .success { color: #28a745; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
+    <div class="card" id="form-container">
         <h2>Créer votre mot de passe</h2>
         <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
-        
-        <div id="form-container">
-            <div class="password-container">
-                <input type="password" id="password" placeholder="••••••••••">
-                <button type="button" class="toggle-password" id="toggleBtn" onclick="togglePass()">👁️</button>
-            </div>
-            <button class="submit-btn" onclick="savePassword()">Valider le mot de passe</button>
-        </div>
-        
-        <div id="message"></div>
+        <input type="password" id="password" placeholder="Nouveau mot de passe">
+        <button onclick="savePassword()">Valider le mot de passe</button>
     </div>
+    
+    <div id="message" style="margin-top: 20px; font-weight: bold; text-align: center;"></div>
 
     <script>
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
@@ -100,25 +71,19 @@
             }
         });
 
-        function togglePass() {
-            const pwdInput = document.getElementById('password');
-            const btn = document.getElementById('toggleBtn');
-            if (pwdInput.type === 'password') {
-                pwdInput.type = 'text';
-                btn.textContent = '👁️‍🗨️';
-            } else {
-                pwdInput.type = 'password';
-                btn.textContent = '👁️';
-            }
-        }
-
         async function savePassword() {
             const password = document.getElementById('password').value;
             const msg = document.getElementById('message');
             const form = document.getElementById('form-container');
 
-            // 1. Vérification immédiate du mot de passe
-            if (!password || password.length < 6) {
+            // 🛑 Vérification 1 : Ken el password faregh, y7bes toul men ghir ma ycreyi chay!
+            if (!password || password.trim() === "") {
+                msg.textContent = "Veuillez entrer un mot de passe valide.";
+                msg.className = 'error';
+                return;
+            }
+
+            if (password.length < 6) {
                 msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
                 msg.className = 'error';
                 return;
@@ -128,7 +93,6 @@
                 msg.textContent = "Enregistrement en cours...";
                 msg.className = '';
 
-                // 2. Récupération de la session depuis l'URL (hash)
                 let session = (await client.auth.getSession()).data.session;
                 
                 if (!session) {
@@ -152,10 +116,42 @@
                     throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
                 }
 
-                // 3. Mise à jour du mot de passe dans Supabase Auth
-                // (Ceci déclenche automatiquement le Trigger SQL qui crée le profil officiel)
-                const { error: authError } = await client.auth.updateUser({ password: password });
+                // 1. Mise à jour du mot de passe fel auth
+                const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
                 if (authError) throw authError;
+
+                const userId = authData.user.id;
+                const userEmail = authData.user.email;
+
+                // 2. Récupération des infos depuis pending_profiles
+                let correctRole = 'operatrice';
+                let userNom = null;
+                let userPrenom = null;
+
+                const { data: pendingData } = await client
+                    .from('pending_profiles')
+                    .select('role, nom, prenom')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+
+                if (pendingData) {
+                    correctRole = pendingData.role;
+                    userNom = pendingData.nom;
+                    userPrenom = pendingData.prenom;
+                }
+
+                // 3. Insertion propre dans profiles KAN ba3d ma tsajel el mot de passe b naja7
+                const { error: profileError } = await client.from('profiles').upsert({
+                    id: userId,
+                    username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
+                    nom: userNom,
+                    role: correctRole,
+                });
+
+                if (profileError) throw profileError;
+
+                // 4. Nettoyage de pending_profiles
+                await client.from('pending_profiles').delete().eq('email', userEmail);
 
                 // Succès total
                 form.style.display = 'none';
