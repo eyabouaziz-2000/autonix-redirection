@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autonix - Création du mot de passe</title>
-    <!-- SDK Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
+            background-color: #f4f6f9;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -25,21 +24,26 @@
             max-width: 400px;
             text-align: center;
         }
-        h2 { margin-bottom: 10px; color: #333; }
-        p { color: #666; font-size: 14px; margin-bottom: 20px; }
-        .input-group {
+        h2 { color: #333; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; }
+        
+        .password-container {
             position: relative;
-            margin-bottom: 20px;
+            margin: 20px 0;
         }
         input {
             width: 100%;
-            padding: 12px 40px 12px 15px;
+            padding: 12px 45px 12px 12px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            font-size: 16px;
             box-sizing: border-box;
+            font-size: 14px;
+            outline: none;
         }
-        #toggleBtn {
+        input:focus {
+            border-color: #28a745;
+        }
+        .toggle-password {
             position: absolute;
             right: 12px;
             top: 50%;
@@ -47,8 +51,10 @@
             background: none;
             border: none;
             cursor: pointer;
+            padding: 0;
             font-size: 18px;
         }
+        
         button.submit-btn {
             width: 100%;
             padding: 12px;
@@ -61,42 +67,41 @@
             font-weight: bold;
         }
         button.submit-btn:hover { background-color: #218838; }
-        #error-message {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #dc3545;
-        }
-        .success { color: #28a745; }
+        #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
+        .error { color: #dc3545; }
+        .success { color: #28a745; font-size: 16px; }
     </style>
 </head>
 <body>
 
-    <div class="card" id="form-container">
+    <div class="card">
         <h2>Créer votre mot de passe</h2>
         <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
         
-        <div class="input-group">
-            <input type="password" id="password-input" placeholder="Mot de passe">
-            <button type="button" id="toggleBtn" onclick="togglePass()">👁️</button>
+        <div id="form-container">
+            <div class="password-container">
+                <input type="password" id="password" placeholder="••••••••••">
+                <button type="button" class="toggle-password" id="toggleBtn" onclick="togglePass()">👁️</button>
+            </div>
+            <button class="submit-btn" onclick="savePassword()">Valider le mot de passe</button>
         </div>
         
-        <button class="submit-btn" onclick="savePassword()">Valider le mot de passe</button>
-        <div id="error-message"></div>
+        <div id="message"></div>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
-        const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON_PUBLIQUE';
+        const SUPABASE_ANON_KEY = 'sb_publishable_KO6LvBlYmTOF-R5PO_nu_g_6fwwLrkP'; 
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
-                detectSessionInUrl: true,
+                detectSessionInUrl: false,
                 persistSession: true
             }
         });
 
         function togglePass() {
-            const pwdInput = document.getElementById('password-input');
+            const pwdInput = document.getElementById('password');
             const btn = document.getElementById('toggleBtn');
             if (pwdInput.type === 'password') {
                 pwdInput.type = 'text';
@@ -108,55 +113,71 @@
         }
 
         async function savePassword() {
-            const errorMsg = document.getElementById('error-message');
-            errorMsg.innerText = "";
+            const password = document.getElementById('password').value;
+            const msg = document.getElementById('message');
+            const form = document.getElementById('form-container');
 
-            // 1. BLOCAGE STRICT EN PREMIER : Si le mot de passe est vide ou court, on s'arrête net !
-            const newPassword = document.getElementById('password-input').value;
-            if (!newPassword || newPassword.length < 6) {
-                errorMsg.innerText = "Erreur : Le mot de passe doit contenir au moins 6 caractères.";
-                errorMsg.className = 'error';
-                return; // Rien ne s'exécute, aucun enregistrement n'est fait !
+            // 1. Vérification immédiate du mot de passe (aucun appel réseau si invalide)
+            if (!password || password.length < 6) {
+                msg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
+                msg.className = 'error';
+                return;
             }
 
             try {
-                errorMsg.innerText = "Enregistrement en cours...";
-                errorMsg.className = '';
+                msg.textContent = "Vérification en cours...";
+                msg.className = '';
 
-                // 2. Mise à jour du mot de passe via le lien de récupération
-                const { data, error } = await supabase.auth.updateUser({
-                  password: newPassword
-                });
-
-                if (error) {
-                  errorMsg.innerText = "Erreur : " + error.message;
-                  errorMsg.className = 'error';
-                  return;
+                // 2. Récupération de la session depuis l'URL
+                let session = (await client.auth.getSession()).data.session;
+                
+                if (!session) {
+                    const hash = window.location.hash;
+                    if (hash && hash.includes('access_token')) {
+                        const params = new URLSearchParams(hash.substring(1));
+                        const accessToken = params.get('access_token');
+                        const refreshToken = params.get('refresh_token');
+                        
+                        if (accessToken) {
+                            const res = await client.auth.setSession({
+                                access_token: accessToken,
+                                refresh_token: refreshToken
+                            });
+                            session = res.data.session;
+                        }
+                    }
                 }
 
-                const user = data.user;
-                const userId = user.id;
-                const userEmail = user.email;
+                if (!session) {
+                    throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
+                }
 
-                // 3. Vérification si le profil existe déjà
-                const { data: existingProfile } = await supabase
+                const userEmail = session.user.email;
+                const userId = session.user.id;
+
+                // 3. VÉRIFICATION DANS LE TABLEAU 'profiles' : 
+                // On regarde si un profil existe déjà pour cet ID ou cet utilisateur, 
+                // SANS rien modifier pour l'instant.
+                const { data: existingProfile, error: checkError } = await client
                     .from('profiles')
                     .select('id')
                     .eq('id', userId)
                     .maybeSingle();
 
                 if (existingProfile) {
-                    errorMsg.innerText = "⚠️ Ce compte a déjà été utilisé.";
-                    errorMsg.className = 'error';
-                    return;
+                    throw new Error("Ce compte a déjà validé son mot de passe.");
                 }
 
-                // 4. Récupération des infos depuis 'pending_profiles'
+                // 4. Mise à jour effective du mot de passe dans Supabase Auth
+                const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
+                if (authError) throw authError;
+
+                // 5. Récupération du rôle depuis pending_profiles
                 let correctRole = 'operatrice';
                 let userNom = null;
                 let userPrenom = null;
 
-                const { data: pendingData } = await supabase
+                const { data: pendingData } = await client
                     .from('pending_profiles')
                     .select('role, nom, prenom')
                     .eq('email', userEmail)
@@ -168,8 +189,8 @@
                     userPrenom = pendingData.prenom;
                 }
 
-                // 5. Insertion définitive dans 'profiles' uniquement si tout est valide
-                const { error: profileError } = await supabase.from('profiles').insert({
+                // 6. Insertion finale dans 'profiles' UNIQUEMENT maintenant que le MDP est validé et mis à jour
+                const { error: profileError } = await client.from('profiles').upsert({
                     id: userId,
                     username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
                     nom: userNom,
@@ -179,12 +200,13 @@
                 if (profileError) throw profileError;
 
                 // Succès total
-                document.getElementById('form-container').style.display = 'none';
-                alert("Mot de passe créé avec succès !");
+                form.style.display = 'none';
+                msg.textContent = "Mot de passe enregistré avec succès ! ✅";
+                msg.className = 'success';
 
             } catch (err) {
-                errorMsg.innerText = "Erreur technique : " + err.message;
-                errorMsg.className = 'error';
+                msg.textContent = "Erreur : " + err.message;
+                msg.className = 'error';
             }
         }
     </script>
