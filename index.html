@@ -2,13 +2,13 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Créer votre mot de passe</title>
-    <!-- Supabase JS CDN -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonix - Création du mot de passe</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f4f6f9;
+            background-color: #f4f6f9;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -24,41 +24,70 @@
             max-width: 400px;
             text-align: center;
         }
+        h2 { color: #333; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; }
+        
+        .password-container {
+            position: relative;
+            margin: 20px 0;
+        }
         input {
             width: 100%;
-            padding: 10px;
-            margin: 15px 0;
+            padding: 12px 45px 12px 12px;
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
+            font-size: 14px;
+            outline: none;
         }
-        button {
-            background: #28a745;
+        input:focus {
+            border-color: #28a745;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-size: 18px;
+        }
+        
+        button.submit-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
             color: white;
             border: none;
-            padding: 10px 15px;
-            width: 100%;
             border-radius: 5px;
-            cursor: pointer;
             font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
         }
-        button:hover {
-            background: #218838;
-        }
-        .error { color: #dc3545; margin-top: 10px; }
-        .success { color: #28a745; margin-top: 10px; }
+        button.submit-btn:hover { background-color: #218838; }
+        #message { margin-top: 15px; font-weight: bold; font-size: 14px; }
+        .error { color: #dc3545; }
+        .success { color: #28a745; font-size: 16px; }
     </style>
 </head>
 <body>
 
-    <div class="card" id="form-container">
+    <div class="card">
         <h2>Créer votre mot de passe</h2>
         <p>Veuillez entrer votre nouveau mot de passe ci-dessous :</p>
-        <input type="password" id="password" placeholder="Nouveau mot de passe">
-        <button onclick="savePassword()">Valider le mot de passe</button>
+        
+        <div id="form-container">
+            <div class="password-container">
+                <input type="password" id="password" placeholder="••••••••••">
+                <button type="button" class="toggle-password" id="toggleBtn" onclick="togglePass()">👁️</button>
+            </div>
+            <button class="submit-btn" onclick="savePassword()">Valider le mot de passe</button>
+        </div>
+        
+        <div id="message"></div>
     </div>
-    
-    <div id="message" style="margin-top: 20px; font-weight: bold; text-align: center;"></div>
 
     <script>
         const SUPABASE_URL = 'https://wvgamjabxcjmxfztuzkb.supabase.co';
@@ -71,33 +100,23 @@
             }
         });
 
-        // Gestion de la session dès le chargement (prend en charge query params et hash)
-        window.addEventListener('DOMContentLoaded', async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const type = urlParams.get('type');
-
-            if (token && type) {
-                try {
-                    const { data, error } = await client.auth.verifyOtp({
-                        token_hash: token,
-                        type: type
-                    });
-                    if (error) throw error;
-                    // Nettoyer l'URL
-                    history.replaceState(null, null, window.location.pathname);
-                } catch (err) {
-                    console.error("Erreur de vérification du lien :", err.message);
-                }
+        function togglePass() {
+            const pwdInput = document.getElementById('password');
+            const btn = document.getElementById('toggleBtn');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                btn.textContent = '👁️‍🗨️';
+            } else {
+                pwdInput.type = 'password';
+                btn.textContent = '👁️';
             }
-        });
+        }
 
         async function savePassword() {
             const password = document.getElementById('password').value;
             const msg = document.getElementById('message');
             const form = document.getElementById('form-container');
 
-            // Vérification si le champ est vide
             if (!password || password.trim() === "") {
                 msg.textContent = "Veuillez entrer un mot de passe valide.";
                 msg.className = 'error';
@@ -121,7 +140,6 @@
                     throw new Error("Lien invalide ou expiré. Veuillez demander une nouvelle invitation.");
                 }
 
-                // 1. Mise à jour du mot de passe dans Supabase Auth
                 const { data: authData, error: authError } = await client.auth.updateUser({ password: password });
                 if (authError) throw authError;
 
@@ -132,24 +150,36 @@
                 let userNom = null;
                 let userPrenom = null;
 
-            const { data: pendingData } = await client
-              .from('pending_profiles')
-              .select('role, nom, prenom')
-              .eq('email', userEmail)
-              .maybeSingle();
+                const { data: pendingData } = await client
+                    .from('pending_profiles')
+                    .select('role, nom, prenom')
+                    .eq('email', userEmail)
+                    .maybeSingle();
 
-            if (pendingData) {
-            userNom = pendingData.nom;
-            userPrenom = pendingData.prenom;
-    
-    // Forcer la correspondance exacte avec la valeur en minuscules de l'Enum SQL
-    if (pendingData.role === 'mural' || pendingData.role === 'Affichage mural' || pendingData.role === 'affichage mural') {
-        correctRole = 'affichage mural';
-    } else {
-        correctRole = pendingData.role;
-    }
-}
-                // 3. Insertion propre dans la table profiles
+                if (pendingData) {
+                    userNom = pendingData.nom;
+                    userPrenom = pendingData.prenom;
+                    
+                    const rawRole = (pendingData.role || '').toLowerCase().trim();
+                    
+                    // Mapping sécurisé pour tous les rôles possibles
+                    if (rawRole.includes('nettoyage')) {
+                        correctRole = 'Agent de nettoyage';
+                    } else if (rawRole.includes('mural')) {
+                        correctRole = 'affichage mural';
+                    } else if (rawRole.includes('chauffeur')) {
+                        correctRole = 'Chauffeur';
+                    } else if (rawRole.includes('mecanicien') || rawRole.includes('mécanicien')) {
+                        correctRole = 'Mécanicien';
+                    } else if (rawRole.includes('carrossier')) {
+                        correctRole = 'Carrossier';
+                    } else if (rawRole.includes('administrateur')) {
+                        correctRole = 'Administrateur';
+                    } else {
+                        correctRole = pendingData.role;
+                    }
+                }
+
                 const { error: profileError } = await client.from('profiles').upsert({
                     id: userId,
                     username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
@@ -159,10 +189,8 @@
 
                 if (profileError) throw profileError;
 
-                // 4. Nettoyage de pending_profiles
                 await client.from('pending_profiles').delete().eq('email', userEmail);
 
-                // Succès
                 form.style.display = 'none';
                 msg.textContent = "Mot de passe enregistré avec succès ! ✅";
                 msg.className = 'success';
