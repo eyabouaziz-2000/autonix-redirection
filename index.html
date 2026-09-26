@@ -150,15 +150,19 @@
                 let userNom = null;
                 let userPrenom = null;
 
-                const { data: pendingData } = await client
-                    .from('pending_profiles')
-                    .select('role, nom, prenom')
-                    .eq('email', userEmail)
-                    .maybeSingle();
+                let userTelephone = null; // Zid variable lel telephone
 
-                if (pendingData) {
-                    userNom = pendingData.nom;
-                    userPrenom = pendingData.prenom;
+               const { data: pendingData } = await client
+                .from('pending_profiles')
+                .select('role, nom, prenom, telephone') 
+                .eq('email', userEmail)
+                .maybeSingle();
+
+               if (pendingData) {
+                userNom = pendingData.nom;
+                userPrenom = pendingData.prenom;
+                userTelephone = pendingData.telephone;
+                 
                     
                     const rawRole = (pendingData.role || '').toLowerCase().trim();
                     
@@ -181,12 +185,14 @@
                 }
 
                 const { error: profileError } = await client.from('profiles').upsert({
-                    id: userId,
-                    username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
-                    nom: userNom,
-                    role: correctRole,
-                });
-
+                   id: userId,
+                   username: userPrenom ? userPrenom.toLowerCase() : userEmail.split('@')[0],
+                   nom: userNom,
+                   email: userEmail,      
+                   telephone: userTelephone, 
+                   role: correctRole,
+                   });
+ 
                 if (profileError) throw profileError;
 
                 await client.from('pending_profiles').delete().eq('email', userEmail);
